@@ -104,3 +104,5 @@ ggplot(Resilience, aes(x = LOAD_sum_prev_01_days_noMissing))+
 
 
 print(Resilience$Speler)
+
+#more to add
