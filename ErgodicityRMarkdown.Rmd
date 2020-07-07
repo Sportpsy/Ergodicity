@@ -1,0 +1,118 @@
+---
+title: "Ergodicity"
+output: 
+  bookdown::html_document2:
+    toc_depth: 2
+    theme: cosmo
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#load libraries
+```{r,message=F}
+library(tibble)
+library(tidyr)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(readxl)
+library(rmcorr)
+library(bookdown)
+```
+
+#load data set
+```{r}
+Resilience <- read.csv(file =                  "C:\\Users\\Neuma\\surfdrive\\Shared\\anonymous_processed_output\\simulation_data_Niklas\\preprocessed_1day_history.csv")
+head(Resilience, 5)
+```
+
+#Data set with no NAs (for EMH and LOAD)
+```{r}
+NoNAs <- Resilience %>%
+  filter(!is.na(EMH_1st_session_first_fut_01_trainingdays), !is.na(LOAD_sum_prev_01_days))
+head(NoNAs, 5)
+```
+```{r}
+sort(table(NoNAs$Speler))
+```
+
+#Select Team 1f 
+```{r}
+OneF <- NoNAs%>%
+  filter(Team == "1f63943fcc3909be531e7939840ac071") #33 players in 1f
+
+sort(table(OneF$Speler))
+table(OneF$day_count)
+glimpse(OneF$Speler)
+```
+
+#make every day_count to an ongoing number string and delete double dates
+```{r}
+OneF$day_count <- OneF$day_count-606
+```
+
+#Create a function which can for some start date i and for some number of days j get the subset we want
+
+```{r}
+subset_detection <- function(startdate, ndays) {
+  df <- OneF %>%
+  filter(day_count >= startdate & day_count < startdate + ndays) %>%
+    count(Speler) %>%
+    filter(ndays == n)
+  nrow(df)
+  #df
+}
+subset_detection(1020, 1)
+
+n_subset <- function(startdate) {
+  previous <- 2
+  ndays <- 1
+  while (ndays < previous) {
+    previous <- subset_detection(startdate, ndays)
+    print(paste(ndays, ":", previous))
+    ndays <- ndays + 1
+  }
+  ndays - 2
+}
+#n_subset
+for (i in 1:197){
+  print(n_subset(i))
+}
+```
+
+
+```{r} 
+df <- tribble(
+  ~Speler, 
+  "a", 
+  "a",
+  "b"
+)
+df %>% count(Speler)
+```
+###
+
+  
