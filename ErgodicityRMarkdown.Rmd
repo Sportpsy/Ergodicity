@@ -11,26 +11,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
 #load libraries
 ```{r,message=F}
 library(tibble)
@@ -43,7 +23,7 @@ library(rmcorr)
 library(bookdown)
 ```
 
-#load data set
+#load data set (data set = nor original, but the one where there is load data of one day and recovery data of the next day)
 ```{r}
 Resilience <- read.csv(file =                  "C:\\Users\\Neuma\\surfdrive\\Shared\\anonymous_processed_output\\simulation_data_Niklas\\preprocessed_1day_history.csv")
 head(Resilience, 5)
@@ -71,38 +51,52 @@ glimpse(OneF$Speler)
 
 #make every day_count to an ongoing number string and delete double dates
 ```{r}
-OneF$day_count <- OneF$day_count-606
+OneFCount <- transform(OneF, new_day_count=as.numeric(factor(day_count)))
 ```
 
 #Create a function which can for some start date i and for some number of days j get the subset we want
 
-```{r}
+```{r, warning=F}
 subset_detection <- function(startdate, ndays) {
-  df <- OneF %>%
-  filter(day_count >= startdate & day_count < startdate + ndays) %>%
+  df <- OneFCount %>%
+    filter(new_day_count >= startdate & new_day_count < startdate + ndays) %>%
     count(Speler) %>%
     filter(ndays == n)
   nrow(df)
-  #df
 }
-subset_detection(1020, 1)
+subset_detection(1, 3)
 
+```
+```{r}
 n_subset <- function(startdate) {
   previous <- 2
-  ndays <- 1
-  while (ndays < previous) {
-    previous <- subset_detection(startdate, ndays)
-    print(paste(ndays, ":", previous))
+  ndays <- 0
+  while (ndays <= previous) {
     ndays <- ndays + 1
+    previous <- subset_detection(startdate, ndays)
+    #print(paste(ndays, ":", previous))
+    
   }
-  ndays - 2
+  if (ndays == previous){
+    ndays
+  } else {
+    ndays - 1
+  }
 }
 #n_subset
-for (i in 1:197){
-  print(n_subset(i))
-}
+#for (i in 1:313){
+ #print(n_subset(i))
+#}
+A <- purrr::map(1:313, n_subset)
+```
+```{r}
+max(unlist(A))
 ```
 
+```{r}
+df2 <- tibble(Index = 1:313, result = unlist(A))
+df2 %>% arrange(result)
+```
 
 ```{r} 
 df <- tribble(
@@ -114,5 +108,323 @@ df <- tribble(
 df %>% count(Speler)
 ```
 ###
+```{r}
+table(OneFCount$new_day_count)
+```
 
-  
+```{r}
+OneFPeriod <- OneFCount %>%
+  filter(new_day_count >193 & new_day_count < 204) %>%
+  filter(Speler != "98f56f89a69c8dd014e38f8748d4d0f9") %>%
+  filter(Speler != "2c2d73d534bf7d347d3ba20a8b19643f") %>%
+  filter(Speler != "b99679d13454f4e469fa212cf0fd3395") %>%
+  filter(Speler != "f5f2d6b7f2630346f45fd41324d85a0c") %>%
+  filter(Speler != "18f141d875cf6d722a187236cfa4482e") %>%
+  filter(Speler != "9e3524149a64c395f150c26dbf9f970d") %>%
+  filter(Speler != "343dfbbcb3cf7a3869a8ea628cd880f1")
+
+sort(table(OneFPeriod$Speler))
+```
+
+#Central Tendencies AggAn1f and AnAgg1f
+```{r}
+AggAn1f <- OneFPeriod %>%
+  group_by(day_count) %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
+
+MeanAggAn1f <- AggAn1f %>%
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD), mean(medianEMH), mean(medianLOAD))
+
+AnAgg1f <- OneFPeriod %>%
+  group_by(Speler) %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+
+MeanAnAgg1f <- AnAgg1f %>%
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+```
+
+#Correlation AggAn1f and AnAgg1f
+```{r}
+CorrAggAn1f <- OneFPeriod %>%
+  group_by(day_count) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+
+MeanCorrAggAn1f <- CorrAggAn1f %>%
+  filter(!is.na(r)) %>%
+  summarise(mean(r), sd(r), median(r)) 
+
+CorrAnAgg1f <- OneFPeriod %>%
+  group_by(Speler) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
+
+MeanCorrAnAgg1f <- CorrAnAgg1f %>% 
+  summarise(mean(r), sd(r), median(r))
+```
+
+```{r}
+hg1fAgg <- hist(CorrAggAn1f$r, breaks = 10)
+
+hg1fAn <- hist(CorrAnAgg1f$r, breaks = 6)
+
+range(c(hg1fAgg$breaks, hg1fAn$breaks))
+
+max(c(hg1fAgg$count, hg1fAn$count))
+
+plot(hg1fAgg, col = rgb(1,0,0,0.4), main = "Correlation of load and recovery for the U17 Team", xlab = "Correlation", xlim = c(-1, 1), ylim = c(0, 5), xaxt = "n")
+plot(hg1fAn, add = TRUE, col = rgb(0,0,1,0.4))
+plot(hg1fAgg, col = rgb(1,0,0,0.4), add = T)
+#plot(hg1fAn, col = rgb(1,0,0,0.4), add = T)
+axis(1, at = seq(-1, 1, by = 0.2), las = 2)
+legend("topright", c("Intraindividual, SD = .26", "Interindividual, SD = .46"),
+       fill = c(rgb(0,0,1,0.4), rgb(1,0,0,0.4)))
+abline(v = MeanCorrAggAn1f$`mean(r)`, col = rgb(0,0,1,1/4)) #line mean corr. Group
+abline(v = MeanCorrAnAgg1f$`mean(r)`, col = rgb(1,0,0,1/4)) #line mean corr. indiv.
+abline(v = MeanCorrAggAn1f$`median(r)`, col = rgb(0,0,1,1/4), lty = 2) #line mean median corr. group
+abline(v = MeanCorrAnAgg1f$`median(r)`, col = rgb(1,0,0,1/4), lty = 2) #line mean median corr.indiv
+```
+
+#Select Team 2d
+```{r}
+TwoD <- NoNAs%>%
+  filter(Team == "2d64fe64ed4b5f2d59ffbd31501cd294") #33 players in 2d
+
+sort(table(TwoD$Speler))
+table(TwoD$day_count)
+glimpse(TwoD$Speler)
+```
+
+#make every day_count to an ongoing number string and delete double dates
+```{r}
+TwoDCount <- transform(TwoD, new_day_count=as.numeric(factor(day_count)))
+```
+
+#Create a function which can for some start date i and for some number of days j get the subset we want
+
+```{r, warning=F}
+subset_detection <- function(startdate, ndays) {
+  df <- TwoDCount %>%
+    filter(new_day_count >= startdate & new_day_count < startdate + ndays) %>%
+    count(Speler) %>%
+    filter(ndays == n)
+  nrow(df)
+}
+subset_detection(1, 3)
+
+```
+```{r}
+n_subset <- function(startdate) {
+  previous <- 2
+  ndays <- 0
+  while (ndays <= previous) {
+    ndays <- ndays + 1
+    previous <- subset_detection(startdate, ndays)
+    #print(paste(ndays, ":", previous))
+    
+  }
+  if (ndays == previous){
+    ndays
+  } else {
+    ndays - 1
+  }
+}
+#n_subset
+#for (i in 1:312){
+ #print(n_subset(i))
+#}
+A <- purrr::map(1:312, n_subset)
+```
+```{r}
+max(unlist(A))
+```
+
+```{r}
+df2 <- tibble(Index = 1:312, result = unlist(A))
+df2 %>% arrange(result)
+```
+
+```{r} 
+df <- tribble(
+  ~Speler, 
+  "a", 
+  "a",
+  "b"
+)
+df %>% count(Speler)
+```
+###
+```{r}
+table(TwoDCount$new_day_count)
+```
+
+
+```{r}
+TwoDPeriod <- TwoDCount %>%
+  filter(new_day_count >194 & new_day_count < 210) %>%
+  filter(Speler != "399e92d3c291705db2be47ce416b25b7") %>%
+  filter(Speler != "a09bd414dc32b9f5b1fabd1e30969298") %>%
+  filter(Speler != "e2adca493c7d8b834ebafacef3d2c446") %>%
+  filter(Speler != "65083f4fcf0fea29bdcb79b0474be7fc") %>%
+  filter(Speler != "067c541b77e73206d543bad5362d28f3") 
+
+sort(table(TwoDPeriod$Speler))
+```
+
+#Central Tendencies AggAn1f and AnAgg1f
+```{r}
+AggAn2d <- TwoDPeriod %>%
+  group_by(day_count) %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+
+MeanAggAn2d <- AggAn2d %>%
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+
+AnAgg2d <- TwoDPeriod %>%
+  group_by(Speler) %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+
+MeanAnAgg2d <- AnAgg2d %>%
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+```
+#Correlation AggAn1f and AnAgg1f
+```{r}
+CorrAggAn2d <- TwoDPeriod %>%
+  group_by(day_count) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+
+MeanCorrAggAn2d <- CorrAggAn2d %>%
+  filter(!is.na(r)) %>%
+  summarise(mean(r), sd(r)) 
+
+CorrAnAgg2d <- TwoDPeriod %>%
+  group_by(Speler) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
+
+MeanCorrAnAgg2d <- CorrAnAgg2d %>% 
+  summarise(mean(r), sd(r))
+```
+
+
+
+
+
+#Select Team 8f 
+```{r}
+EightF <- NoNAs%>%
+  filter(Team == "8f5a6405211400c9e4befdc9f184046b") #36 players in 8f
+
+sort(table(EightF$Speler))
+table(EightF$day_count)
+glimpse(EightF$Speler)
+```
+
+#make every day_count to an ongoing number string and delete double dates
+```{r}
+EightFCount <- transform(EightF, new_day_count=as.numeric(factor(day_count)))
+```
+
+#Create a function which can for some start date i and for some number of days j get the subset we want
+
+```{r, warning=F}
+subset_detection <- function(startdate, ndays) {
+  df <- EightFCount %>%
+    filter(new_day_count >= startdate & new_day_count < startdate + ndays) %>%
+    count(Speler) %>%
+    filter(ndays == n)
+  nrow(df)
+}
+subset_detection(1, 3)
+
+```
+```{r}
+n_subset <- function(startdate) {
+  previous <- 2
+  ndays <- 0
+  while (ndays <= previous) {
+    ndays <- ndays + 1
+    previous <- subset_detection(startdate, ndays)
+    #print(paste(ndays, ":", previous))
+    
+  }
+  if (ndays == previous){
+    ndays
+  } else {
+    ndays - 1
+  }
+}
+#n_subset
+#for (i in 1:393){
+ #print(n_subset(i))
+#}
+A <- purrr::map(1:393, n_subset)
+```
+```{r}
+max(unlist(A))
+```
+
+```{r}
+df2 <- tibble(Index = 1:393, result = unlist(A))
+df2 %>% arrange(result)
+```
+
+```{r} 
+df <- tribble(
+  ~Speler, 
+  "a", 
+  "a",
+  "b"
+)
+df %>% count(Speler)
+```
+###
+```{r}
+table(EightFCount$new_day_count)
+```
+
+```{r}
+EightFPeriod <- EightFCount %>%
+  filter(new_day_count >1 & new_day_count < 13) %>%
+  filter(Speler != "d272a44ec19af13a6e47ef361e6071b0") %>%
+  filter(Speler != "025f95604ee430a65b888f366737e812") %>%
+  filter(Speler != "e725fa22afa5ddd4b7bb4a13024f30b0") %>%
+  filter(Speler != "9ef04893710a7b946f5c8e8c32d2f2e5") %>%
+  filter(Speler != "2cf758b642c5bcb6dd50e13470b008d8") %>%
+  filter(Speler != "854284d212f5c0ea2ee3cdc02f235c79") %>%
+  filter(Speler != "3e2e85f3c9e0d6491dba2758c2e70c38") 
+
+sort(table(EightFPeriod$Speler))
+```
+
+#Central Tendencies AggAn1f and AnAgg1f
+```{r}
+AggAn8f <- EightFPeriod %>%
+  group_by(day_count) %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+
+MeanAggAn8f <- AggAn8f %>%
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+
+AnAgg8f <- EightFPeriod %>%
+  group_by(Speler) %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+
+MeanAnAgg8f <- AnAgg8f %>%
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+```
+
+#Correlation AggAn1f and AnAgg1f
+```{r}
+CorrAggAn8f <- EightFPeriod %>%
+  group_by(day_count) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+
+MeanCorrAggAn8f <- CorrAggAn8f %>%
+  filter(!is.na(r)) %>%
+  summarise(mean(r), sd(r)) 
+
+CorrAnAgg8f <- EightFPeriod %>%
+  group_by(Speler) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
+
+MeanCorrAnAgg8f <- CorrAnAgg8f %>% 
+  summarise(mean(r), sd(r))
+```
