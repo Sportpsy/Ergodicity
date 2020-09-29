@@ -122,21 +122,4 @@ sort(table(Resiliencewithout0$Speler))
 table(Resiliencewithout0$day_count)
 sort(table(Resiliencewithout0$day_count))
 
-#new data set
-Selection1 <- Resiliencewithout0 %>%
-  filter(day_count > 548 & day_count < 1111)
 
-#calc with that data set
-AggAn <- Selection1 %>%
-  group_by(day_count) %>%
-  summarise(meanLOAD = mean(LOAD_sum_prev_01_days_noMissing), sdLOAD = sd(LOAD_sum_prev_01_days_noMissing) )
-
-MeanAggAn <- AggAn %>%
-  summarise(mean(meanLOAD), mean(sdLOAD, na.rm = TRUE))
-
-AnAgg <- Selection1 %>%
-  group_by(Speler) %>%
-  summarise(meanLOAD = mean(LOAD_sum_prev_01_days_noMissing), sdLOAD = sd(LOAD_sum_prev_01_days_noMissing))
-
-MeanAnAgg <- AnAgg %>%
-  summarise(mean(meanLOAD), mean(sdLOAD, na.rm = TRUE))

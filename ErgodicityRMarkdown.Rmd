@@ -6,9 +6,13 @@ output:
     theme: cosmo
     df_print: kable
 ---
-
+#setup
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+#install packages
+```{r,message=F}
+install.packages("psychometric")
 ```
 
 #load libraries
@@ -21,9 +25,11 @@ library(dplyr)
 library(readxl)
 library(rmcorr)
 library(bookdown)
+library(rmcorr)
+library(psychometric)
 ```
 
-#load data set (data set = nor original, but the one where there is load data of one day and recovery data of the next day)
+#load data set (data set = not original, but the one where there is load data of one day and recovery data of the next day)
 ```{r}
 Resilience <- read.csv(file =                  "C:\\Users\\Neuma\\surfdrive\\Shared\\anonymous_processed_output\\simulation_data_Niklas\\preprocessed_1day_history.csv")
 head(Resilience, 5)
@@ -137,28 +143,46 @@ MeanAggAn1f <- AggAn1f %>%
 
 AnAgg1f <- OneFPeriod %>%
   group_by(Speler) %>%
-  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
 
 MeanAnAgg1f <- AnAgg1f %>%
-  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD), mean(medianEMH), mean(medianLOAD))
+
+Allatonce1f <- OneFPeriod %>%
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
 ```
 
 #Correlation AggAn1f and AnAgg1f
 ```{r}
 CorrAggAn1f <- OneFPeriod %>%
   group_by(day_count) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman"))
 
 MeanCorrAggAn1f <- CorrAggAn1f %>%
   filter(!is.na(r)) %>%
   summarise(mean(r), sd(r), median(r)) 
 
+CIr(r = -0.1391591, n = 10, level = .95) #How to calc CIs for every single day?
+
+#this is the inter-individual approach all at once
+spearman1f <- cor.test(OneFPeriod$LOAD_sum_prev_01_days, OneFPeriod$EMH_1st_session_first_fut_01_trainingdays, method = "spearman")
+
+CIr(r = -0.2814702, n = 10, level = .95)
+
+#this now is the intra-individual approach with rmcorr
+rmcorr <- rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+
+#this is how I could calc the CI for every individual speler
+rmcorr(Speler == "dbbd087c3555a335d446c0490499ad78"	, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+
+#this is the intra-individual analysis with pearson method (same result, but also provides SDs for overall and each individual)
 CorrAnAgg1f <- OneFPeriod %>%
   group_by(Speler) %>%
   summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
 
-MeanCorrAnAgg1f <- CorrAnAgg1f %>% 
-  summarise(mean(r), sd(r), median(r))
+MeanCorrAnAgg1f <- CorrAnAgg1f %>%
+  filter(!is.na(r)) %>%
+  summarise(mean(r), sd(r), median(r)) 
 ```
 
 ```{r}
@@ -269,38 +293,43 @@ TwoDPeriod <- TwoDCount %>%
 sort(table(TwoDPeriod$Speler))
 ```
 
-#Central Tendencies AggAn1f and AnAgg1f
+#Central Tendencies AggAn2d and AnAgg2d
 ```{r}
 AggAn2d <- TwoDPeriod %>%
   group_by(day_count) %>%
-  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
 
 MeanAggAn2d <- AggAn2d %>%
-  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD), mean(medianEMH), mean(medianLOAD))
 
 AnAgg2d <- TwoDPeriod %>%
   group_by(Speler) %>%
-  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
 
 MeanAnAgg2d <- AnAgg2d %>%
-  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD), mean(medianEMH), mean(medianLOAD))
 ```
-#Correlation AggAn1f and AnAgg1f
+#Correlation AggAn2d and AnAgg2d
 ```{r}
 CorrAggAn2d <- TwoDPeriod %>%
   group_by(day_count) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman")) 
 
 MeanCorrAggAn2d <- CorrAggAn2d %>%
   filter(!is.na(r)) %>%
-  summarise(mean(r), sd(r)) 
+  summarise(mean(r), sd(r), median(r)) 
 
-CorrAnAgg2d <- TwoDPeriod %>%
-  group_by(Speler) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
+CIr(r = -0.0362162, n = 15, level = .95) #How to calc CIs for every single day?
 
-MeanCorrAnAgg2d <- CorrAnAgg2d %>% 
-  summarise(mean(r), sd(r))
+#this is the inter-individual approach all at once
+spearman2d <- cor.test(TwoDPeriod$LOAD_sum_prev_01_days, TwoDPeriod$EMH_1st_session_first_fut_01_trainingdays, method = "spearman")
+
+CIr(r = -0.07298894, n = 15, level = .95)
+
+#this now is the intra-individual approach with rmcorr
+rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, TwoDPeriod)
+
+#see under Team 1f how to calc the CI and SDs for every single player
 ```
 
 
@@ -398,33 +427,54 @@ sort(table(EightFPeriod$Speler))
 ```{r}
 AggAn8f <- EightFPeriod %>%
   group_by(day_count) %>%
-  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
 
 MeanAggAn8f <- AggAn8f %>%
-  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD), mean(medianEMH), mean(medianLOAD))
 
 AnAgg8f <- EightFPeriod %>%
   group_by(Speler) %>%
-  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days))
+  summarise(meanEMH = mean(EMH_1st_session_first_fut_01_trainingdays), meanLOAD = mean(LOAD_sum_prev_01_days), sdEMH = sd(EMH_1st_session_first_fut_01_trainingdays), sdLOAD = sd(LOAD_sum_prev_01_days), medianEMH = median(EMH_1st_session_first_fut_01_trainingdays), medianLOAD = median(LOAD_sum_prev_01_days))
 
 MeanAnAgg8f <- AnAgg8f %>%
-  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
+  summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD), mean(medianEMH), mean(medianLOAD))
 ```
 
-#Correlation AggAn1f and AnAgg1f
+#Correlation AggAn8f and AnAgg8f
 ```{r}
 CorrAggAn8f <- EightFPeriod %>%
   group_by(day_count) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman")) 
 
 MeanCorrAggAn8f <- CorrAggAn8f %>%
   filter(!is.na(r)) %>%
-  summarise(mean(r), sd(r)) 
+  summarise(mean(r), sd(r), mean(median)) 
 
-CorrAnAgg8f <- EightFPeriod %>%
-  group_by(Speler) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
+CIr(r = -0.1669229, n = 11, level = .95) #How to calc CIs for every single day?
 
-MeanCorrAnAgg8f <- CorrAnAgg8f %>% 
-  summarise(mean(r), sd(r))
+#this is the inter-individual approach all at once
+spearman8f <- cor.test(EightFPeriod$LOAD_sum_prev_01_days, EightFPeriod$EMH_1st_session_first_fut_01_trainingdays, method = "spearman")
+
+CIr(r = 0.04192393, n = 11, level = .95)
+
+#this now is the intra-individual approach with rmcorr
+rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, EightFPeriod)
+
+#see under Team 1f how to calc the CI and SDs for every single player
+```
+#load data of simulation data
+```{r}
+Simulation <- read.csv(file =                  "C:\\Users\\Neuma\\surfdrive\\Shared\\anonymous_processed_output\\simulation_data_Niklas_v2\\safe_to_share\\simulation_data_REAL_group_effect.csv")
+head(Simulation, 5)
+glimpse(Simulation$Speler)
+```
+#Data set with no NAs (for EMH and LOAD)
+```{r}
+NoNAsSim <- Simulation %>%
+  filter(!is.na(EMH_1st_session_first_fut_01_trainingdays), !is.na(LOAD_sum_prev_01_days))
+head(NoNAsSim, 5)
+```
+#make every day_count to an ongoing number string and delete double dates
+```{r}
+SimDays <- transform(NoNAsSim, new_day_count=as.numeric(factor(day_count)))
 ```
