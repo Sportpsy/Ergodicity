@@ -82,11 +82,21 @@ MeanAllatonceAll <- AllatonceAll %>%
 #Corr all 69 ----
 CorrAggAn69 <- SquareData %>%
   group_by(row_number) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson")) 
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman")) 
 
 MeanCorrAggAn69 <- CorrAggAn69 %>%
   filter(!is.na(r)) %>%
-  summarise(mean(r), sd(r), median(r)) 
+  summarise(mean(r), sd(r), median(r))
+
+CIr(r = -0.2192531, n = 69, level = .95)
+
+#this is the inter-individual approach all at once
+spearman69 <- cor.test(SquareData$LOAD_sum_prev_01_days, SquareData$EMH_1st_session_first_fut_01_trainingdays, method = "spearman")
+
+CIr(r = -0.2008837, n = 69, level = .95)
+
+#this now is the intra-individual approach with rmcorr
+rmcorr69 <- rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, SquareData)
 
 CorrAnAgg69 <- SquareData %>%
   group_by(Speler) %>%
@@ -94,6 +104,8 @@ CorrAnAgg69 <- SquareData %>%
 
 MeanCorrAnAgg69 <- CorrAnAgg69 %>% 
   summarise(mean(r), sd(r), median(r))
+
+CIr(r = -0.1843496, n = 69, level = .95)
 
 #do the same above only for each single team ----
 #select team
@@ -264,3 +276,15 @@ AllatonceAll8f <- SquareDataAll8f %>%
 MeanAllatonceAll8f <- AllatonceAll8f %>%
   summarise(mean(meanEMH), mean(meanLOAD), mean(sdEMH), mean(sdLOAD))
   
+
+dim(SquareData$Speler)
+glimpse(SquareData$Speler)
+sort(SquareData$Speler)
+sort(SquareDataAll1f$Speler)
+glimpse(NewDayCount$Speler)
+sort(table(NewDayCount$Speler))
+(80+81+81+95+102+102+111+112+114+115+116+116+116+117+119+119+120+120+121+122+124+124+125+127+127+132+135+135+137+137+139+141+142+143+145+146+149+152+152+154+158+163+165+167+170+172+172+174+174+176+176+176+181+181+184+187+192+196+197+202+202+211+217+228+242+243+245+249+257)/69
+
+mean(NewDayCount$Speler)
+count(NewDayCount$Speler)
+meanobs <- mean(NewDayCount$Speler)

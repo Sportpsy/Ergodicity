@@ -164,21 +164,33 @@ MeanCorrAggAn1f <- CorrAggAn1f %>%
 
 CIr(r = -0.1391591, n = 10, level = .95) #How to calc CIs for every single day?
 
+#cor.test
+cor.test(OneFPeriod$LOAD_sum_prev_01_days_noMissing, OneFPeriod$EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman")
+
 #this is the inter-individual approach all at once
 spearman1f <- cor.test(OneFPeriod$LOAD_sum_prev_01_days, OneFPeriod$EMH_1st_session_first_fut_01_trainingdays, method = "spearman")
 
 CIr(r = -0.2814702, n = 10, level = .95)
 
 #this now is the intra-individual approach with rmcorr
-rmcorr <- rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+rmcorr1f <- rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+
+plot(rmcorr1f, overall = TRUE)
+show(plot(rmcorr1f))
 
 #this is how I could calc the CI for every individual speler
-rmcorr(Speler == "dbbd087c3555a335d446c0490499ad78"	, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+dbb <- rmcorr(Speler == "dbbd087c3555a335d446c0490499ad78", EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+
+Threesevenseven <- rmcorr(Speler == "377996da64aca7f40df934a4388f7dc8", EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+
+Zeroctwo <- rmcorr(Speler == "0c2ebd75eca1aedbb88981cf336b84fc", EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
+
+Fourbnine <- rmcorr(Speler == "4b901319df2d51b682f1e2eb7cd79096", EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, OneFPeriod)
 
 #this is the intra-individual analysis with pearson method (same result, but also provides SDs for overall and each individual)
 CorrAnAgg1f <- OneFPeriod %>%
   group_by(Speler) %>%
-  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "pearson"))
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman"))
 
 MeanCorrAnAgg1f <- CorrAnAgg1f %>%
   filter(!is.na(r)) %>%
@@ -327,9 +339,18 @@ spearman2d <- cor.test(TwoDPeriod$LOAD_sum_prev_01_days, TwoDPeriod$EMH_1st_sess
 CIr(r = -0.07298894, n = 15, level = .95)
 
 #this now is the intra-individual approach with rmcorr
-rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, TwoDPeriod)
+rmcorr2d <- rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, TwoDPeriod)
 
 #see under Team 1f how to calc the CI and SDs for every single player
+
+#this is the intra-individual analysis with pearson method (same result, but also provides SDs for overall and each individual)
+CorrAnAgg2d <- TwoDPeriod %>%
+  group_by(Speler) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman"))
+
+MeanCorrAnAgg2d <- CorrAnAgg2d %>%
+  filter(!is.na(r)) %>%
+  summarise(mean(r), sd(r), median(r))
 ```
 
 
@@ -458,9 +479,18 @@ spearman8f <- cor.test(EightFPeriod$LOAD_sum_prev_01_days, EightFPeriod$EMH_1st_
 CIr(r = 0.04192393, n = 11, level = .95)
 
 #this now is the intra-individual approach with rmcorr
-rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, EightFPeriod)
+rmcorr8f <- rmcorr(Speler, EMH_1st_session_first_fut_01_trainingdays, LOAD_sum_prev_01_days_noMissing, EightFPeriod)
 
 #see under Team 1f how to calc the CI and SDs for every single player
+
+#this is the intra-individual analysis with pearson method (same result, but also provides SDs for overall and each individual)
+CorrAnAgg8f <- EightFPeriod %>%
+  group_by(Speler) %>%
+  summarize(N = n(), r = cor(LOAD_sum_prev_01_days, EMH_1st_session_first_fut_01_trainingdays, use = "pairwise.complete.obs", method = "spearman"))
+
+MeanCorrAnAgg8f <- CorrAnAgg8f %>%
+  filter(!is.na(r)) %>%
+  summarise(mean(r), sd(r), median(r))
 ```
 #load data of simulation data
 ```{r}
